@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Env
+.env
+*.env
+*.log
+logs/
+venv/
+.envrc
+.DS_Store
+
+# Notebooks & runtime
+.ipynb_checkpoints/
+*.sqlite3
+
+# VS Code
+.vscode/
+
+# Conda
+*.conda
+*.lock
+
+# Output files
+*.sarif
+*.jsonl
