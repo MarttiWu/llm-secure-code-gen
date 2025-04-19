@@ -5,6 +5,7 @@ import json
 from config import Config
 from openai import OpenAI
 import re
+from refinement.retrieval.faiss_retriever import FewShotRetriever
 
 # Initialize the OpenAI client
 client = OpenAI(api_key=Config.OPENAI_API_KEY)
@@ -22,16 +23,29 @@ def extract_raw_code(text):
     match = re.findall(r"```(?:python)?\n(.*?)```", text, re.DOTALL)
     return match[0].strip() if match else text.strip()
 
-def generate_code(prompt: str) -> str:
-    """Generate secure Python code using structured outputs (JSON Schema)."""
+def generate_code(prompt: str, k_shots: int = 3, use_few_shot: bool = False) -> str:
+    """Generate secure Python code using few-shot examples and structured output."""
     system_prompt = load_system_prompt()
 
+    few_shot_text = ""
+    if use_few_shot:
+        retriever = FewShotRetriever()
+        retriever.ensure_index_ready()
+
+        few_shots = retriever.get_few_shots(prompt, k=k_shots)
+        for ex in few_shots:
+            few_shot_text += f"### Task:\n{ex['description']}\n"
+            few_shot_text += f"### Solution:\n{ex['secure_code']}\n\n"
+
+    final_prompt = few_shot_text + f"### Task:\n{prompt}\n### Solution:\n"
+
     try:
+        # ✅ Structured output (GPT-4o+ only)
         response = client.responses.create(
-            model=Config.MODEL_NAME,
+            model=Config.get_model_name(),
             input=[
                 {"role": "system", "content": system_prompt},
-                {"role": "user", "content": prompt}
+                {"role": "user", "content": final_prompt}
             ],
             text={
                 "format": {
@@ -50,7 +64,6 @@ def generate_code(prompt: str) -> str:
                 }
             }
         )
-
         result = json.loads(response.output_text)
         return result["code"]
 
@@ -58,13 +71,12 @@ def generate_code(prompt: str) -> str:
         print(f"⚠️ Structured output failed: {type(e).__name__}: {e}")
         print("🔁 Falling back to classic generation...\n")
 
-        # Fallback to plain completion (older models or SDK)
         try:
             fallback_response = client.chat.completions.create(
-                model=Config.MODEL_NAME,
+                model=Config.get_model_name(),
                 messages=[
                     {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": prompt}
+                    {"role": "user", "content": final_prompt}
                 ],
                 max_tokens=Config.TOKEN_LIMIT,
                 temperature=0.7,

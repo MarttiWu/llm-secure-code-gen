@@ -4,6 +4,7 @@ from generator.openai_gen import generate_code
 from analyzer.bandit_scan import run_bandit
 from config import Config
 from data.loader import load_dataset
+import argparse
 
 def print_issues(issues, log_file):
     log_file.write("\n🛑 Security issues found:\n")
@@ -11,11 +12,23 @@ def print_issues(issues, log_file):
         log_file.write(f"🔸 {issue.get('issue_text')} (Severity: {issue.get('issue_severity')})\n")
 
 def main():
+    parser = argparse.ArgumentParser(description="Secure Code Generator with optional few-shot")
+    parser.add_argument("--few-shot", action="store_true", help="Enable few-shot prompting from training data")
+    parser.add_argument("--use-ft", action="store_true", help="Use fine-tuned model")
+    args = parser.parse_args()
+
+    use_few_shot = args.few_shot
+
     print("🔐 Secure Code Generator — Running...\n")
+    print(f"📌 Few-shot mode: {'enabled' if use_few_shot else 'disabled'}\n")
+    
+    if args.use_ft:
+        Config.USE_FINE_TUNED_MODEL = True
+    print(f"🧠 Using model: {Config.get_model_name()}")
 
     # Load dataset
     dataset_path = "data/val/sec-new-desc.jsonl"
-    samples = load_dataset(dataset_path, limit=5)
+    samples = load_dataset(dataset_path, limit=50)
 
     # Prepare log file
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -35,7 +48,7 @@ def main():
             log_file.write(f"📝 Prompt: {prompt}\n")
 
             # Generate code
-            code = generate_code(prompt)
+            code = generate_code(prompt, use_few_shot=use_few_shot)
             log_file.write("\n🤖 Generated Code:\n" + "-" * 40 + "\n")
             log_file.write(code + "\n")
             log_file.write("-" * 40 + "\n")
