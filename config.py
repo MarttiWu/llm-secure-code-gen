@@ -13,8 +13,7 @@ class Config:
     TOKEN_LIMIT = 1024
     SYSTEM_PROMPT_PATH = "prompts/system_prompt.txt"
     MAX_FIX_ITER = 2
+    USE_SELF_FIX = True
     @classmethod
     def get_model_name(cls):
         return cls.FINE_TUNED_MODEL_NAME if cls.USE_FINE_TUNED_MODEL else cls.DEFAULT_MODEL_NAME
-
-    USE_SELF_FIX = True
