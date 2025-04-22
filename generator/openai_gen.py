@@ -23,7 +23,7 @@ def extract_raw_code(text):
     match = re.findall(r"```(?:python)?\n(.*?)```", text, re.DOTALL)
     return match[0].strip() if match else text.strip()
 
-def generate_code(prompt: str, k_shots: int = 3, use_few_shot: bool = False) -> str:
+def generate_code(prompt: str, k_shots: int = 5, use_few_shot: bool = False) -> str:
     """Generate secure Python code using few-shot examples and structured output."""
     system_prompt = load_system_prompt()
 
