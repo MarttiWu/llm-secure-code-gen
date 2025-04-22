@@ -6,6 +6,8 @@ from config import Config
 from data.loader import load_dataset
 from refinement.self_fix import self_fix
 import argparse
+import time
+start_time = time.time()
 
 def print_issues(issues, log_file):
     log_file.write("\n🛑 Security issues found:\n")
@@ -40,6 +42,7 @@ def main():
     log_path = os.path.join(log_dir, f"run_{timestamp}.log")
 
     secure_count = 0
+    start_time = time.time()
 
     with open(log_path, "w", encoding="utf-8") as log_file:
         log_file.write(f"📄 Evaluation Log — {timestamp}\n")
@@ -58,6 +61,7 @@ def main():
 
             # Evaluate with Bandit
             issues = run_bandit(code)
+            remaining = None
 
             if not issues:
                 secure_count += 1
@@ -65,20 +69,29 @@ def main():
             else:
                 if use_self_fix:
                     code, remaining = self_fix(prompt, code)
-                if remaining:
-                    
+                    if not remaining:
+                        secure_count += 1
+                        log_file.write("✅ Code is secure after self-fix.\n\n")
+                    else:
+                        print_issues(issues, log_file)
+                        log_file.write("❌ Code flagged as insecure.\n\n")
+                else:
                     print_issues(issues, log_file)
                     log_file.write("❌ Code flagged as insecure.\n\n")
-                else:
-                    secure_count += 1
-                    log_file.write("✅ Code is secure.\n\n")
+                    
             # Log ground truth
             log_file.write("📌 Ground Truth (from dataset):\n")
             log_file.write(sample["secure_code"] + "\n")
             log_file.write("=" * 60 + "\n")
 
+    end_time = time.time()  # ⏱️ End timer
+    total_time = end_time - start_time
+    avg_time = total_time / len(samples)
+
     # ✅ Terminal output only: summary
     print(f"✅ {secure_count}/{len(samples)} generated samples are secure.")
+    print(f"\n🕒 Total time: {total_time:.2f} seconds")
+    print(f"⏱️ Average time per sample: {avg_time:.2f} seconds")
 
 if __name__ == "__main__":
     main()
